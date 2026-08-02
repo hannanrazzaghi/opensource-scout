@@ -114,6 +114,13 @@ class GitHubRestClient:
             self._cache.set(cache_key, etag=etag, body=body, status_code=response.status_code)
         return body
 
+    async def post_json(self, path: str, *, json_body: dict[str, Any]) -> Any:
+        """A single POST (e.g. creating a pull request). Never used for
+        discovery — only for the approval-gated external mutation commands
+        in :mod:`opensource_scout.reports.contribution_report`."""
+        response = await self._request("POST", path, json=json_body)
+        return response.json()
+
     async def paginate(
         self, path: str, *, params: dict[str, Any] | None = None, per_page: int = 100
     ) -> AsyncIterator[Any]:
