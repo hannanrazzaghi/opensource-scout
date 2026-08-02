@@ -163,7 +163,9 @@ def discover_projects(
 @discover_app.command("issues")
 def discover_issues(repository: str) -> None:
     """Search a selected repository for suitable issues."""
-    raise _not_implemented("discover issues", "Phase 3 (issue intelligence)")
+    from opensource_scout.reports.issue_report import run_discover_issues
+
+    run_discover_issues(_load_settings_or_exit(), repository, console=console)
 
 
 projects_app = typer.Typer(help="Work with discovered projects.")
@@ -206,10 +208,21 @@ def issue_group(
     number: int,
 ) -> None:
     """`oss issue inspect|select|reproduce <owner/repository> <number>`."""
-    phase = (
-        "Phase 5 (safe reproduction)" if action == "reproduce" else "Phase 3 (issue intelligence)"
-    )
-    raise _not_implemented(f"issue {action}", phase)
+    if action == "reproduce":
+        raise _not_implemented("issue reproduce", "Phase 5 (safe reproduction)")
+    if action not in {"inspect", "select"}:
+        err_console.print(
+            f"[bold red]unknown action:[/bold red] {action!r} (expected inspect|select|reproduce)"
+        )
+        raise typer.Exit(code=2)
+
+    from opensource_scout.reports.issue_report import run_issue_inspect, run_issue_select
+
+    settings = _load_settings_or_exit()
+    if action == "inspect":
+        run_issue_inspect(settings, repository, number, console=console)
+    else:
+        run_issue_select(settings, repository, number, console=console)
 
 
 issues_app = typer.Typer(help="Work with discovered issues.")
@@ -219,7 +232,9 @@ app.add_typer(issues_app, name="issues")
 @issues_app.command("list")
 def issues_list() -> None:
     """List discovered issues with their deterministic scores."""
-    raise _not_implemented("issues list", "Phase 3 (issue intelligence)")
+    from opensource_scout.reports.issue_report import run_issues_list
+
+    run_issues_list(_load_settings_or_exit(), console=console)
 
 
 # --- Contribution workflow ---
