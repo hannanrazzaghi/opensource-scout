@@ -119,8 +119,15 @@ def _find_test_command(project_row: ProjectRow | None) -> tuple[str, ...] | None
 
 
 def run_issue_reproduce(
-    settings: Settings, repository: str, number: int, *, console: Console
+    settings: Settings,
+    repository: str,
+    number: int,
+    *,
+    console: Console,
+    clone_url: str | None = None,
 ) -> None:
+    """``clone_url`` overrides the default GitHub clone URL — tests pass a
+    local ``file://`` URL to avoid a real network dependency."""
     engine = ensure_database(settings.database_path, settings.database_url)
     session_factory = build_session_factory(engine)
     contribution_id = contribution_id_for(repository, number)
@@ -162,6 +169,7 @@ def run_issue_reproduce(
             contribution_id,
             repository,
             test_command=test_command,
+            clone_url=clone_url,
             session_factory=session_factory,
         )
     )
