@@ -62,3 +62,22 @@ no automated test coverage yet — worth closing before Phase 3.
 `repository/rules.py` 91%, `github/issues.py` 79%. `reports/issue_report.py`
 and `cli.py` remain manually-verified only, same gap noted at the end of
 Phase 2.
+
+## Phase 4 — LLM reasoning and context construction (2026-08-02, branch `feat/llm-routing`)
+
+| Commit | Feature | Tests | CI |
+|---|---|---|---|
+| `ab95cf6` | `feat: add structured LLM output models and model router` — `ProjectAssessment`/`IssueAssessment`/`ImplementationPlan` with range/evidence validation; fast/reasoning/coding role resolution that fails loudly on a missing model instead of silently substituting another | manual verification | pending |
+| `c9ab269` | `feat: add OpenAI Responses client with cost tracking and caching` — structured-output parsing via `client.responses.parse`, one retry on malformed output, `llm_calls` cost/token recording, daily/monthly/per-workflow budget enforcement, `llm_cache` table (new Alembic revision `e9f96c9f4d37`) for prompt-hash caching | manual respx smoke tests covering cache hit avoiding a second HTTP call, malformed-output retry, and budget rejection; **found and fixed a real bug during smoke testing** — the OpenAI SDK raises `pydantic.ValidationError` directly on unparseable output rather than returning `output_parsed=None`, so the original retry logic never triggered on genuinely malformed text | pending |
+| `1409842` | `feat: add deterministic repository-context builder` — lexical-overlap ranking, bounded by file count and token budget; zero-overlap files are never selected regardless of remaining budget | manual verification | pending |
+| `f1e8850` | `feat: wire cost tracking CLI commands` — `oss cost today`, `oss cost month` | manual CLI run | pending |
+| `83b7d94` | `test: cover LLM structured outputs, routing, budget, cache, and context builder` — 33 new tests (10 structured-output validation, 4 router, 8 budget, 7 context builder, 4 LLM-client integration with mocked OpenAI Responses endpoint) | `pytest`: **113 passed total**, zero real network calls, zero paid API calls | pending |
+
+**Coverage at end of Phase 4:** 113 tests passing. `llm/budget.py` and
+`llm/router.py` 100%, `domain/llm_models.py` 100%, `llm/client.py` 91%,
+`llm/context.py` 94%. `llm/cache.py`'s `SqlAlchemyLlmCache` persistence path
+is exercised only via `InMemoryLlmCache` in tests, same gap as
+`github/cache.py`'s `SqlAlchemyHttpCache` noted at the end of Phase 2.
+Nothing in the CLI actually calls the LLM layer yet — that wiring happens in
+Phase 5 (implementation planning) and Phase 3-style assessment commands
+would be a natural follow-up.
