@@ -64,7 +64,10 @@ async def create_workspace(
     clone_result = await run_command(
         CommandSpec(
             executable="git",
-            args=("clone", "--depth", "50", clone_url, "."),
+            # --no-single-branch: a shallow clone otherwise only fetches the
+            # default branch, so checking out any other branch/ref below
+            # would fail with "pathspec did not match any file(s)".
+            args=("clone", "--depth", "50", "--no-single-branch", clone_url, "."),
             working_directory=path,
             timeout_seconds=_CLONE_TIMEOUT_SECONDS,
             network_required=True,

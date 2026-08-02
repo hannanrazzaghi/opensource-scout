@@ -53,7 +53,12 @@ class Settings(BaseSettings):
 
     # --- Local storage ---
     data_dir: Path = Field(default=DEFAULT_DATA_DIR, alias="OSS_DATA_DIR")
-    workspace_dir: Path = Field(default=DEFAULT_DATA_DIR / "workspaces", alias="OSS_WORKSPACE_DIR")
+    # None means "not explicitly set"; see the workspace_dir property below,
+    # which derives it from data_dir. A bare `default=DEFAULT_DATA_DIR /
+    # "workspaces"` would freeze the workspace path to the real home
+    # directory even when OSS_DATA_DIR is overridden, since Pydantic
+    # evaluates that default once at class-definition time, not per instance.
+    workspace_dir_override: Path | None = Field(default=None, alias="OSS_WORKSPACE_DIR")
 
     # --- Logging ---
     log_level: str = Field(default="INFO", alias="OSS_LOG_LEVEL")
@@ -72,6 +77,10 @@ class Settings(BaseSettings):
         if value < 0:
             raise ValueError("Budgets must be non-negative")
         return value
+
+    @property
+    def workspace_dir(self) -> Path:
+        return self.workspace_dir_override or (self.data_dir / "workspaces")
 
     @property
     def database_path(self) -> Path:
