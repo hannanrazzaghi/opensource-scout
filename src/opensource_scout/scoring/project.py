@@ -18,18 +18,7 @@ from opensource_scout.domain.models import (
     RepositoryCandidate,
     ScoreDimension,
 )
-
-# Keywords that indicate hardware requirements incompatible with a CPU-only
-# MacBook Air, per the developer's stated constraints.
-_GPU_KEYWORDS = (
-    "cuda",
-    "nvidia",
-    "gpu-only",
-    "multi-gpu",
-    "tensorrt",
-    "distributed training",
-    "large-scale training",
-)
+from opensource_scout.scoring.keywords import GPU_KEYWORDS, keyword_overlap
 
 # Signals that a repository is a learning resource or promotional list
 # rather than a project with real engineering depth to contribute to.
@@ -53,14 +42,10 @@ def _text_blob(candidate: RepositoryCandidate) -> str:
     return " ".join(parts).lower()
 
 
-def _keyword_overlap(text: str, keywords: tuple[str, ...]) -> list[str]:
-    return [k for k in keywords if k.lower() in text]
-
-
 def _score_career_relevance(candidate: RepositoryCandidate, profile: Profile) -> ScoreDimension:
     text = _text_blob(candidate)
-    skill_hits = _keyword_overlap(text, profile.skills)
-    interest_hits = _keyword_overlap(text, profile.interests)
+    skill_hits = keyword_overlap(text, profile.skills)
+    interest_hits = keyword_overlap(text, profile.interests)
 
     # Skills matter more than adjacent interests: up to 20 points for skill
     # overlap, up to 10 for interest overlap, each saturating rather than
@@ -169,7 +154,7 @@ def _score_maintainer_activity(candidate: RepositoryCandidate, *, now: datetime)
 
 def _score_hardware_compatibility(candidate: RepositoryCandidate) -> ScoreDimension:
     text = _text_blob(candidate)
-    gpu_hits = _keyword_overlap(text, _GPU_KEYWORDS)
+    gpu_hits = keyword_overlap(text, GPU_KEYWORDS)
 
     value = 10
     evidence: list[str] = []
@@ -239,12 +224,12 @@ def _penalties(candidate: RepositoryCandidate, *, now: datetime) -> tuple[list[s
         reasons.append("many open PRs with no recent external contributor merges")
         points += 5
 
-    low_depth_hits = _keyword_overlap(text, _LOW_DEPTH_KEYWORDS)
+    low_depth_hits = keyword_overlap(text, _LOW_DEPTH_KEYWORDS)
     if low_depth_hits:
         reasons.append(f"looks like a tutorial/list repo: {', '.join(low_depth_hits)}")
         points += 10
 
-    gpu_hits = _keyword_overlap(text, _GPU_KEYWORDS)
+    gpu_hits = keyword_overlap(text, GPU_KEYWORDS)
     if len(gpu_hits) >= 2:
         reasons.append("strong GPU/large-scale-training focus")
         points += 5

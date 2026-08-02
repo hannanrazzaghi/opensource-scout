@@ -61,6 +61,32 @@ query RepositoryBundle($owner: String!, $name: String!) {
 }
 """
 
+_ISSUE_QUERY = """
+query IssueBundle($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      title
+      url
+      body
+      createdAt
+      updatedAt
+      labels(first: 20) { nodes { name } }
+      assignees(first: 10) { nodes { login } }
+      comments { totalCount }
+      timelineItems(itemTypes: [CROSS_REFERENCED_EVENT], first: 25) {
+        nodes {
+          ... on CrossReferencedEvent {
+            source {
+              ... on PullRequest { number state }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 
 class GraphQLClient:
     def __init__(
@@ -104,4 +130,29 @@ class GraphQLClient:
         repository = payload.get("data", {}).get("repository")
         if repository is None:
             raise GitHubNotFoundError(f"not found: {owner}/{name}")
+        return repository
+
+    async def fetch_issue_bundle(self, owner: str, name: str, number: int) -> dict[str, Any]:
+        """Fetch one issue's title/body/labels/assignees/comment-count and
+        cross-referenced pull requests (the competing-work signal) in a
+        single request. Returns ``{"issue": {...} | None}``."""
+        response = await self._client.post(
+            GRAPHQL_URL,
+            json={
+                "query": _ISSUE_QUERY,
+                "variables": {"owner": owner, "name": name, "number": number},
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+
+        errors = payload.get("errors")
+        if errors:
+            if any(e.get("type") == "NOT_FOUND" for e in errors):
+                raise GitHubNotFoundError(f"not found: {owner}/{name}#{number}")
+            raise GitHubError(f"GraphQL error for {owner}/{name}#{number}: {errors}")
+
+        repository = payload.get("data", {}).get("repository")
+        if repository is None:
+            raise GitHubNotFoundError(f"not found: {owner}/{name}#{number}")
         return repository
