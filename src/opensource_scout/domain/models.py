@@ -174,6 +174,27 @@ class IssueScore(BaseModel):
         )
 
 
+class ContributionRule(BaseModel):
+    """One extracted contribution rule for a repository, always traceable
+    back to the file and excerpt it came from — per the requirement that
+    every extracted rule carry its own evidence rather than being asserted
+    from a summary."""
+
+    repository_full_name: str
+    category: str
+    file_path: str
+    heading_or_range: str
+    confidence: float
+    excerpt: str
+
+    @field_validator("confidence")
+    @classmethod
+    def _confidence_in_range(cls, value: float) -> float:
+        if not (0.0 <= value <= 1.0):
+            raise ValueError(f"confidence {value} out of range [0, 1]")
+        return value
+
+
 class Approval(BaseModel):
     """A single-use, expiring human approval for one specific external
     action on one specific contribution. Required before the workflow state
