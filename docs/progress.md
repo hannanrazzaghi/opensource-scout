@@ -47,3 +47,18 @@ above); `logging.py` is 69% (the JSON-formatter exception path is untested).
 should add one directly. `reports/project_report.py` and `cli.py` are
 exercised via manual end-to-end runs against mocked GitHub responses but have
 no automated test coverage yet — worth closing before Phase 3.
+
+## Phase 3 — Issue intelligence (2026-08-02, branch `feat/issue-intelligence`)
+
+| Commit | Feature | Tests | CI |
+|---|---|---|---|
+| `f2aa07c` | `feat: add issue discovery and competing-work detection` — REST label sweep excluding PRs, GraphQL enrichment for assignees/comments/cross-referenced PRs | manual respx smoke test | pending |
+| `106f813` | `feat: add repository contribution-rule extraction` — fetches CONTRIBUTING/SECURITY/LICENSE/tooling files, regex-extracts evidenced rules (test/lint/format/typecheck commands, DCO/CLA, commit conventions, branch rules, PR-title, changelog, design-discussion) | manual respx smoke test | pending |
+| `9beceeb` | `feat: add deterministic issue scoring` — six bounded dimensions plus explicit, evidenced rejection reasons (assigned, competing PR, unclear body, private data, GPU hardware, oversized scope, wontfix, security, cosmetic); extracted shared `scoring/keywords.py` to stop duplicating GPU-keyword logic between project and issue scoring | manual scenario test | pending |
+| `25ecc11` | `feat: add issue reports and discovery CLI commands` — wires `oss discover issues`, `oss issues list`, `oss issue inspect`, `oss issue select`; persists to `issues` table and stores extracted rules on the parent `projects` row; renders 1 primary + 2 backup recommendation | manual end-to-end CLI run against mocked GitHub | pending |
+| `aab8f26` | `test: cover issue scoring, rule extraction, and competing-work detection` — 21 new tests (13 issue-scoring unit, 3 rule-extraction integration, 4 issue-discovery integration, including PR-exclusion and open-vs-closed cross-reference distinction) | `pytest`: **80 passed total**, zero real network calls | pending |
+
+**Coverage at end of Phase 3:** 80 tests passing. `scoring/issue.py` 94%,
+`repository/rules.py` 91%, `github/issues.py` 79%. `reports/issue_report.py`
+and `cli.py` remain manually-verified only, same gap noted at the end of
+Phase 2.

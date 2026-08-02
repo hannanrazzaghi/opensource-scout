@@ -6,7 +6,7 @@ high-quality open-source contributions.
 > OpenSourceScout is an engineering assistant, not an autonomous contribution bot.
 > Users are responsible for understanding and reviewing every public contribution.
 
-> **Status:** Foundation and GitHub discovery are implemented. Issue intelligence,
+> **Status:** Foundation, GitHub discovery, and issue intelligence are implemented.
 > LLM reasoning, safe execution, and the PR workflow are not yet built. See
 > [docs/progress.md](docs/progress.md) for exact status and
 > [docs/architecture.md](docs/architecture.md) for how the pieces fit together.
@@ -130,9 +130,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and
 
 ## Current limitations
 
-- GitHub repository discovery and deterministic project scoring are
-  implemented (`oss discover projects`); issue intelligence and repository
-  rule extraction (Phase 3) are not built yet.
+- GitHub repository discovery, deterministic project scoring, issue
+  discovery/scoring, competing-work detection, and repository contribution-
+  rule extraction are implemented (`oss discover projects`, `oss discover
+  issues`).
 - No LLM calls are wired up yet (Phase 4); `oss cost` commands are stubs.
 - No reproduction, implementation, validation, or PR workflows yet (Phases 5–6).
 - The Claude Pro export/import bridge does not exist yet.

@@ -5,6 +5,16 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.3.0] - Issue intelligence
+
+### Added
+
+- Issue discovery for a selected repository: label-filtered plus a recent-unlabeled sweep, excluding pull requests, enriched via GraphQL with assignees, comment counts, and cross-referenced pull requests.
+- Competing-work detection — an issue is flagged when it has an active assignee or an open pull request already references it.
+- Repository contribution-rule extraction: fetches CONTRIBUTING/SECURITY/LICENSE/PR-template/tooling-config files and extracts structured, evidenced rules (test/lint/format/typecheck commands, DCO/CLA, commit conventions, branch rules).
+- Deterministic issue scoring (career relevance, scope clarity, acceptance probability, technical value, testability, schedule fit) with explicit, evidenced rejection reasons — no LLM.
+- `oss discover issues`, `oss issues list`, `oss issue inspect`, `oss issue select`.
+
 ## [0.2.0] - GitHub discovery
 
 ### Added
