@@ -28,7 +28,8 @@ from opensource_scout.llm.cache import SqlAlchemyLlmCache
 from opensource_scout.llm.client import OpenAiClient
 from opensource_scout.workflows.implementation import plan_implementation, validate_contribution
 from opensource_scout.workflows.reproduction import reproduce_issue
-from opensource_scout.workflows.state_machine import InvalidTransitionError, transition
+from opensource_scout.workflows.state_machine import InvalidTransitionError
+from opensource_scout.workflows.transitions import record_transition as _record_transition
 
 _TEST_COMMAND_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("pytest", ("python3", "-m", "pytest", "-q")),
@@ -40,21 +41,6 @@ _TEST_COMMAND_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 def contribution_id_for(repository: str, issue_number: int) -> str:
     return f"{repository.replace('/', '-')}-{issue_number}"
-
-
-def _record_transition(
-    session, contribution_id: str, from_state: WorkflowState, to_state: WorkflowState, evidence: str
-) -> None:
-    record = transition(contribution_id, from_state, to_state, evidence=evidence)
-    session.add(
-        WorkflowTransitionRow(
-            contribution_id=contribution_id,
-            from_state=record.from_state.value,
-            to_state=record.to_state.value,
-            evidence=record.evidence,
-            occurred_at=record.at,
-        )
-    )
 
 
 def _get_or_create_contribution(

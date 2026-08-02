@@ -6,10 +6,9 @@ high-quality open-source contributions.
 > OpenSourceScout is an engineering assistant, not an autonomous contribution bot.
 > Users are responsible for understanding and reviewing every public contribution.
 
-> **Status:** Foundation, GitHub discovery, issue intelligence, the LLM
-> reasoning layer, and safe reproduction/implementation workflows are
-> implemented. The Claude review bridge and PR workflow are not yet built. See
-> [docs/progress.md](docs/progress.md) for exact status and
+> **Status:** v1.0.0 — the full discovery-through-résumé workflow described
+> below is implemented end to end and covered by an automated test suite. See
+> [docs/progress.md](docs/progress.md) for the phase-by-phase build log and
 > [docs/architecture.md](docs/architecture.md) for how the pieces fit together.
 
 ## What it does
@@ -97,6 +96,34 @@ cost month` report spend against the configured budgets. A repository is never
 sent to an LLM in full — deterministic search (ripgrep, Tree-sitter, BM25, git
 history) narrows context first.
 
+## Example workflow
+
+```bash
+uv run oss discover projects
+uv run oss project select octo/example
+uv run oss discover issues octo/example
+uv run oss issue select octo/example 42
+uv run oss issue reproduce octo/example 42
+
+uv run oss contribution plan octo/example#42
+uv run oss contribution implement octo-example-42     # human writes the actual fix
+uv run oss contribution validate octo-example-42
+
+uv run oss claude export diff octo-example-42          # paste into Claude Pro
+uv run oss claude import claude-response.txt
+
+uv run oss pr prepare octo-example-42
+# HUMAN APPROVAL REQUIRED: PUSH EXTERNAL BRANCH — run `oss approve <id>`
+uv run oss approve <approval-id>
+uv run oss github push octo-example-42
+# HUMAN APPROVAL REQUIRED: OPEN EXTERNAL PULL REQUEST — run `oss approve <id>`
+uv run oss approve <approval-id>
+uv run oss github open-pr octo-example-42
+
+uv run oss ledger sync                                  # after the maintainer merges
+uv run oss resume generate octo-example-42
+```
+
 ## Safety model
 
 - **Deterministic scoring.** Project and issue scores are computed by plain
@@ -131,34 +158,31 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and
 
 ## Current limitations
 
-- GitHub repository discovery, deterministic project scoring, issue
-  discovery/scoring, competing-work detection, and repository contribution-
-  rule extraction are implemented (`oss discover projects`, `oss discover
-  issues`).
-- The OpenAI Responses client, model router, structured outputs, cost/budget
-  tracking, and deterministic context builder are implemented and now used
-  by `oss contribution plan`. Issue/project *assessment* (as opposed to
-  implementation planning) still doesn't call the LLM layer yet.
-- Safe, sandboxed command execution, isolated per-contribution workspaces,
-  issue reproduction, implementation planning, and validation are
-  implemented (`oss issue reproduce`, `oss contribution
-  plan/implement/validate/status`). OpenSourceScout does not write code to
-  disk automatically — a generated plan is for human review, not
-  auto-application.
-- No PR preparation, GitHub mutation commands, approval system, contribution
-  ledger, or résumé generation yet (Phase 6).
-- The Claude Pro export/import bridge does not exist yet.
+- Issue/project *assessment* via the LLM layer (as opposed to implementation
+  planning, which does call it) isn't wired into `oss discover
+  projects`/`issues` yet — those remain fully deterministic today, by design
+  (see docs/architecture.md's scoring section).
+- OpenSourceScout does not write code to disk automatically at any point in
+  the workflow — `oss contribution plan` and `oss pr prepare` produce
+  material for a human to act on, not a patch that gets applied for you.
+- `oss github push` pushes directly to `origin` on the cloned workspace; a
+  real external contribution typically needs a fork remote configured first
+  — this repo's own read-only clone won't have push credentials for someone
+  else's project.
+- The full command surface is implemented and tested with mocked
+  GitHub/OpenAI interactions; it has not yet been run against a real,
+  unfamiliar external repository end to end by a human.
 
 ## Roadmap
 
-| Milestone | Scope |
-|---|---|
-| v0.1.0 | Foundation and project discovery skeleton |
-| v0.2.0 | GitHub discovery and deterministic project scoring |
-| v0.3.0 | Issue intelligence and repository rule extraction |
-| v0.4.0 | LLM reasoning and context construction |
-| v0.5.0 | Safe reproduction and implementation workflows |
-| v1.0.0 | Claude review bridge, PR workflow, contribution ledger |
+| Milestone | Scope | Status |
+|---|---|---|
+| v0.1.0 | Foundation and project discovery skeleton | done |
+| v0.2.0 | GitHub discovery and deterministic project scoring | done |
+| v0.3.0 | Issue intelligence and repository rule extraction | done |
+| v0.4.0 | LLM reasoning and context construction | done |
+| v0.5.0 | Safe reproduction and implementation workflows | done |
+| v1.0.0 | Claude review bridge, PR workflow, contribution ledger | done |
 
 ## License
 

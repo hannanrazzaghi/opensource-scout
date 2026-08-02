@@ -101,3 +101,26 @@ would be a natural follow-up.
 `reports/project_report.py` remain manually-verified only (same gap noted
 since Phase 2/3) — the highest-value follow-up for test coverage at this
 point.
+
+## Phase 6 — Claude review bridge and PR workflow (2026-08-02, branch `feat/claude-review-bridge`)
+
+| Commit | Feature | Tests | CI |
+|---|---|---|---|
+| `8e03aa7` | `feat: add approval issuance, granting, and consumption service` — an `approvals` row only exists once a human runs `oss approve`; requesting one only records a pending entry on the contribution | manual lifecycle smoke test surfaced a real bug: SQLite doesn't round-trip timezone-aware datetimes through SQLAlchemy, so reads came back naive and crashed comparisons — fixed by treating naive reads as UTC at the persistence boundary | pending |
+| `a64c434` | `feat: add Claude Pro review export/import bridge` — Markdown packet export (architecture/issue/plan/diff/pr) and a fixed-format response parser | manual round-trip smoke test found a real bug: `_BULLET_PATTERN.finditer(section_text, re.MULTILINE)` passed the `MULTILINE` flag as the `pos` *positional* argument instead of a flag, silently starting the search 8 characters in and dropping bullets — fixed by compiling the pattern with `re.MULTILINE` instead | pending |
+| `aeac269` | `feat: add GitHub REST POST support for approval-gated mutations` — `GitHubRestClient.post_json` for creating pull requests | manual respx smoke test | pending |
+| `03b6ae6` | `refactor: extract shared workflow-transition recording helper` — moved the transition-recording helper out of `contribution_report.py` into `workflows/transitions.py` so `pr_report.py` and `ledger_report.py` share it instead of duplicating | full suite re-run to confirm the refactor was behavior-preserving | pending |
+| `897b7c0` | `feat: add PR preparation and approval-gated GitHub mutation commands` — branch/commit/PR-body generation, `oss github push`/`open-pr`, each gated on a valid approval of the matching kind | full end-to-end smoke test against a real local bare-repo remote (actual `git push`, verified with `git for-each-ref`) plus mocked GitHub PR creation; **found the same timezone bug as in `approvals/service.py`, this time in `workflows/state_machine.transition()`** — its `now` default was a naive `datetime.now()`, which crashed once a real timezone-aware `Approval` reached the gated-transition check; fixed to default to UTC | pending |
+| `53a040d` | `feat: add contribution ledger and resume bullet generation` — `oss ledger sync` checks real PR merge status via GitHub and advances workflow state; `oss resume generate` only produces a bullet for `MERGED`/`RELEASED` contributions | manual smoke test covering the merge-detection state advance and the pre-merge rejection | pending |
+| `473d893` | `feat: wire Claude bridge, PR, approval, ledger, and resume CLI commands` — every remaining command from the product spec's CLI surface (§28) is now implemented; `oss ledger sync` was added (present in the spec's command list but missing from the earlier CLI skeleton) | manual `--help` and command-level smoke test | pending |
+| `d3a6373` | `test: cover approvals, Claude bridge, PR workflow, and ledger` — 27 new tests (9 approval-lifecycle, 9 Claude export/import, 4 PR-workflow integration including a real git-push-to-bare-repo case, 5 ledger/résumé) | `pytest`: **173 passed total**, zero real network calls, zero paid API calls | pending |
+
+**Coverage at end of Phase 6 (final):** 173 tests passing.
+`execution/command.py` 100%, `claude_bridge/import_.py` 100%,
+`workflows/transitions.py` 100%, `approvals/service.py` 97%. Three real bugs
+were found by end-to-end smoke testing across this phase (not by manual code
+review) — all three were timezone or argument-order mistakes that unit
+tests in isolation wouldn't have caught, which is the strongest argument in
+this project for keeping integration-level smoke tests alongside unit
+tests. `reports/issue_report.py` and `reports/project_report.py` remain the
+main coverage gap carried across every phase since Phase 2/3.

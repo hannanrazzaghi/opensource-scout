@@ -284,12 +284,59 @@ app.add_typer(claude_app, name="claude")
 
 @claude_app.command("export")
 def claude_export(review_type: str, id: Annotated[str, typer.Argument()] = "") -> None:  # noqa: A002
-    raise _not_implemented("claude export", "Phase 6 (Claude review bridge)")
+    """`oss claude export <architecture|issue|plan|diff|pr> <id>`."""
+    from opensource_scout.claude_bridge.export import ClaudeExportError, export_review_packet
+    from opensource_scout.db.session import build_session_factory, ensure_database
+
+    if review_type not in ("architecture", "issue", "plan", "diff", "pr"):
+        err_console.print(f"[bold red]unknown review type:[/bold red] {review_type!r}")
+        raise typer.Exit(code=2)
+
+    settings = _load_settings_or_exit()
+    engine = ensure_database(settings.database_path, settings.database_url)
+    with build_session_factory(engine)() as session:
+        try:
+            path = export_review_packet(
+                session, settings.data_dir / "claude_exports", review_type, id
+            )
+        except ClaudeExportError as exc:
+            err_console.print(f"[bold red]export failed:[/bold red] {exc}")
+            raise typer.Exit(code=1) from exc
+    console.print(f"[green]Exported[/green] review packet to [cyan]{path}[/cyan]")
 
 
 @claude_app.command("import")
 def claude_import(review_file: str) -> None:
-    raise _not_implemented("claude import", "Phase 6 (Claude review bridge)")
+    """Parse a pasted-back Claude response and store it as untrusted,
+    structured feedback — never executed."""
+    from pathlib import Path
+
+    from opensource_scout.claude_bridge.import_ import ClaudeImportError, parse_claude_review
+
+    text = Path(review_file).read_text(encoding="utf-8")
+    try:
+        feedback = parse_claude_review(text)
+    except ClaudeImportError as exc:
+        err_console.print(f"[bold red]import failed:[/bold red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"Decision: [bold]{feedback.decision}[/bold]")
+    for label, items in (
+        ("Critical issues", feedback.critical_issues),
+        ("Suggested improvements", feedback.suggested_improvements),
+        ("Missing tests", feedback.missing_tests),
+        ("Rule violations", feedback.rule_violations),
+    ):
+        if items:
+            console.print(f"\n{label}:")
+            for i in items:
+                console.print(f"  - {i}")
+    if feedback.recommended_next_step:
+        console.print(f"\nRecommended next step: {feedback.recommended_next_step}")
+    console.print(
+        "\n[dim]This is untrusted input — verify every claim against the repository "
+        "before acting on it.[/dim]"
+    )
 
 
 # --- PR preparation and GitHub mutation ---
@@ -300,13 +347,31 @@ app.add_typer(pr_app, name="pr")
 
 @pr_app.command("prepare")
 def pr_prepare(contribution_id: str) -> None:
-    raise _not_implemented("pr prepare", "Phase 6 (PR preparation)")
+    from opensource_scout.reports.pr_report import run_pr_prepare
+
+    run_pr_prepare(_load_settings_or_exit(), contribution_id, console=console)
 
 
 @app.command()
 def approve(approval_id: str) -> None:
     """Grant a pending human approval for an external-repository action."""
-    raise _not_implemented("approve", "Phase 6 (approval system)")
+    from opensource_scout.approvals.service import ApprovalError, grant_approval
+    from opensource_scout.db.session import build_session_factory, ensure_database
+
+    settings = _load_settings_or_exit()
+    engine = ensure_database(settings.database_path, settings.database_url)
+    with build_session_factory(engine)() as session:
+        try:
+            granted = grant_approval(session, approval_id)
+            session.commit()
+        except ApprovalError as exc:
+            err_console.print(f"[bold red]{exc}[/bold red]")
+            raise typer.Exit(code=1) from exc
+    console.print(
+        f"[green]Granted[/green] approval {granted.approval_id} "
+        f"({granted.kind.value}) for {granted.contribution_id}, "
+        f"expires {granted.expires_at.isoformat()}."
+    )
 
 
 github_app = typer.Typer(help="Approval-gated GitHub mutation commands for external repositories.")
@@ -318,7 +383,9 @@ def github_push(
     contribution_id: str,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
 ) -> None:
-    raise _not_implemented("github push", "Phase 6 (GitHub mutation commands)")
+    from opensource_scout.reports.pr_report import run_github_push
+
+    run_github_push(_load_settings_or_exit(), contribution_id, dry_run=dry_run, console=console)
 
 
 @github_app.command("open-pr")
@@ -326,7 +393,9 @@ def github_open_pr(
     contribution_id: str,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
 ) -> None:
-    raise _not_implemented("github open-pr", "Phase 6 (GitHub mutation commands)")
+    from opensource_scout.reports.pr_report import run_github_open_pr
+
+    run_github_open_pr(_load_settings_or_exit(), contribution_id, dry_run=dry_run, console=console)
 
 
 # --- Ledger and résumé ---
@@ -337,12 +406,24 @@ app.add_typer(ledger_app, name="ledger")
 
 @ledger_app.command("list")
 def ledger_list() -> None:
-    raise _not_implemented("ledger list", "Phase 6 (contribution ledger)")
+    from opensource_scout.reports.ledger_report import run_ledger_list
+
+    run_ledger_list(_load_settings_or_exit(), console=console)
 
 
 @ledger_app.command("show")
 def ledger_show(contribution_id: str) -> None:
-    raise _not_implemented("ledger show", "Phase 6 (contribution ledger)")
+    from opensource_scout.reports.ledger_report import run_ledger_show
+
+    run_ledger_show(_load_settings_or_exit(), contribution_id, console=console)
+
+
+@ledger_app.command("sync")
+def ledger_sync() -> None:
+    """Check open pull requests for merged status and advance workflow state."""
+    from opensource_scout.reports.ledger_report import run_ledger_sync
+
+    run_ledger_sync(_load_settings_or_exit(), console=console)
 
 
 resume_app = typer.Typer(help="Generate verified résumé material from merged contributions.")
@@ -351,7 +432,9 @@ app.add_typer(resume_app, name="resume")
 
 @resume_app.command("generate")
 def resume_generate(contribution_id: str) -> None:
-    raise _not_implemented("resume generate", "Phase 6 (résumé generation)")
+    from opensource_scout.reports.ledger_report import run_resume_generate
+
+    run_resume_generate(_load_settings_or_exit(), contribution_id, console=console)
 
 
 # --- Cost tracking ---
