@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from opensource_scout.domain.enums import ApprovalKind, WorkflowState
 from opensource_scout.domain.models import Approval
@@ -148,7 +148,7 @@ def transition(
     on rejection; callers should treat either as fatal for the requested
     transition and not partially apply it.
     """
-    at = now or datetime.now()
+    at = now or datetime.now(UTC)
     validate_transition(current, target, approval=approval, now=at)
     return TransitionRecord(
         contribution_id=contribution_id,
