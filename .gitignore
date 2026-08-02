@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local data
+*.db
+*.sqlite
+*.sqlite3
+workspaces/
+
+# Testing / quality tool caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.pyright/
+
+# Secret scanning baseline is intentionally tracked (no secrets, just hashes)
+!.secrets.baseline
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# uv / packaging
+*.whl
