@@ -155,7 +155,9 @@ def discover_projects(
     limit: Annotated[int, typer.Option(help="Minimum candidates to collect before ranking.")] = 30,
 ) -> None:
     """Search GitHub for candidate repositories and score them deterministically."""
-    raise _not_implemented("discover projects", "Phase 2 (GitHub discovery)")
+    from opensource_scout.reports.project_report import run_discover_projects
+
+    run_discover_projects(_load_settings_or_exit(), limit=limit, console=console)
 
 
 @discover_app.command("issues")
@@ -171,7 +173,9 @@ app.add_typer(projects_app, name="projects")
 @projects_app.command("list")
 def projects_list() -> None:
     """List discovered projects with their deterministic scores."""
-    raise _not_implemented("projects list", "Phase 2 (GitHub discovery)")
+    from opensource_scout.reports.project_report import run_projects_list
+
+    run_projects_list(_load_settings_or_exit(), console=console)
 
 
 @app.command("project")
@@ -180,12 +184,19 @@ def project_group(
     repository: str,
 ) -> None:
     """`oss project inspect <owner/repository>` or `oss project select <owner/repository>`."""
+    from opensource_scout.reports.project_report import run_project_inspect, run_project_select
+
     if action not in {"inspect", "select"}:
         err_console.print(
             f"[bold red]unknown action:[/bold red] {action!r} (expected inspect|select)"
         )
         raise typer.Exit(code=2)
-    raise _not_implemented(f"project {action}", "Phase 2 (GitHub discovery)")
+
+    settings = _load_settings_or_exit()
+    if action == "inspect":
+        run_project_inspect(settings, repository, console=console)
+    else:
+        run_project_select(settings, repository, console=console)
 
 
 @app.command("issue")

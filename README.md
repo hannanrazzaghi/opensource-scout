@@ -130,8 +130,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and
 
 ## Current limitations
 
-- No GitHub discovery beyond repository search/scoring yet — issue intelligence
-  (Phase 3) is not built.
+- GitHub repository discovery and deterministic project scoring are
+  implemented (`oss discover projects`); issue intelligence and repository
+  rule extraction (Phase 3) are not built yet.
 - No LLM calls are wired up yet (Phase 4); `oss cost` commands are stubs.
 - No reproduction, implementation, validation, or PR workflows yet (Phases 5–6).
 - The Claude Pro export/import bridge does not exist yet.
