@@ -5,6 +5,18 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.4.0] - LLM reasoning and context construction
+
+### Added
+
+- Structured LLM output models (`ProjectAssessment`, `IssueAssessment`, `ImplementationPlan`) with field bounds matching the corresponding deterministic score dimensions and required non-empty evidence — malformed or evidence-free output is rejected, not accepted.
+- Three-role model router (fast/reasoning/coding) resolving to configured model names; a role with no configured model fails loudly rather than silently falling back to another model.
+- OpenAI Responses API client with structured-output parsing, one retry on malformed output, and per-call cost/token recording — no call happens without a Pydantic response model.
+- Prompt-hash caching (`llm_cache` table) so an identical (model, task, prompt) request is served without a second billed call.
+- Daily/monthly spend budgets and a per-workflow call-count limit, enforced *before* every call against the `llm_calls` audit table.
+- Deterministic, bounded repository-context selection (lexical overlap ranking, token-budgeted) — no LLM ever sees an unfiltered repository dump.
+- `oss cost today`, `oss cost month`.
+
 ## [0.3.0] - Issue intelligence
 
 ### Added
