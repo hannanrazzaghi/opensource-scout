@@ -349,12 +349,33 @@ app.add_typer(cost_app, name="cost")
 
 @cost_app.command("today")
 def cost_today() -> None:
-    raise _not_implemented("cost today", "Phase 4 (cost tracking)")
+    """Show today's OpenAI spend against the configured daily budget."""
+    from opensource_scout.db.session import build_session_factory, ensure_database
+    from opensource_scout.llm.budget import spend_today
+
+    settings = _load_settings_or_exit()
+    engine = ensure_database(settings.database_path, settings.database_url)
+    with build_session_factory(engine)() as session:
+        spend = spend_today(session)
+    console.print(f"Calls today: {spend.calls}")
+    console.print(
+        f"Spend today: ${spend.cost_usd:.4f} / ${settings.daily_openai_budget_usd:.2f} budget"
+    )
 
 
 @cost_app.command("month")
 def cost_month() -> None:
-    raise _not_implemented("cost month", "Phase 4 (cost tracking)")
+    """Show this month's OpenAI spend against the configured monthly budget."""
+    from opensource_scout.db.session import build_session_factory, ensure_database
+    from opensource_scout.llm.budget import spend_this_month
+
+    settings = _load_settings_or_exit()
+    engine = ensure_database(settings.database_path, settings.database_url)
+    with build_session_factory(engine)() as session:
+        spend = spend_this_month(session)
+    console.print(f"Calls this month: {spend.calls}")
+    budget_usd = settings.monthly_openai_budget_usd
+    console.print(f"Spend this month: ${spend.cost_usd:.4f} / ${budget_usd:.2f} budget")
 
 
 def main() -> None:  # pragma: no cover - thin wrapper around typer's own entry
