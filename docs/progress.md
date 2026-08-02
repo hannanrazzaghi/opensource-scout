@@ -81,3 +81,23 @@ is exercised only via `InMemoryLlmCache` in tests, same gap as
 Nothing in the CLI actually calls the LLM layer yet — that wiring happens in
 Phase 5 (implementation planning) and Phase 3-style assessment commands
 would be a natural follow-up.
+
+## Phase 5 — Safe reproduction and implementation workflows (2026-08-02, branch `feat/execution-safety`)
+
+| Commit | Feature | Tests | CI |
+|---|---|---|---|
+| `c8661ac` | `feat: add safe typed command execution` — argument-array `CommandSpec`, blocklist for `sudo`/credential paths/`--privileged`/destructive git ops, path-scoped recursive-delete check, output redaction, `CommandRunRow` persistence | manual smoke test covering every blocklist rule plus a scoped-delete allow case and a timeout | pending |
+| `622f19e` | `feat: add isolated workspace manager` — per-contribution clone/checkout/cleanup, path-traversal-safe deletion | manual smoke test with a real local git repo (clone, read back a file, cleanup) | pending |
+| `3473d74` | `feat: add issue reproduction workflow` — evidenced `CONFIRMED`/`NOT_REPRODUCED`/`NEEDS_CLARIFICATION`/`ENVIRONMENT_BLOCKED` classification from an actual command's exit code | manual smoke test with a real failing pytest test (→ CONFIRMED) and a missing test command (→ NEEDS_CLARIFICATION) | pending |
+| `f06693c` | `feat: add implementation planning and validation workflow` — `plan_implementation` (reasoning-role LLM call over a context bundle) and `validate_contribution` (PASSED/FAILED/TIMED_OUT/UNAVAILABLE per command) | manual smoke test surfaced a naming inconsistency (the `UNAVAILABLE` branch didn't prefix its command string like the others) — fixed before commit | pending |
+| `bd3f41c` | `feat: wire reproduction and implementation workflow CLI commands` — `oss issue reproduce`, `oss contribution plan/implement/validate/status`, each recording a real state-machine transition | manual end-to-end run against a real GitHub clone (`octocat/Hello-World`) for reproduce, and a mocked-OpenAI full plan→implement→validate→status chain | pending |
+| `8160297` | `fix: derive workspace_dir from data_dir instead of a frozen home-directory default` — **found by the automated test suite, not manually**: `Settings.workspace_dir`'s default was evaluated once at class-definition time against the real home directory, so `OSS_DATA_DIR` overrides in tests silently leaked into `~/.opensource-scout/workspaces`, causing a `git clone: destination path already exists` failure. Also fixed shallow `git clone --depth 50` only fetching the default branch (missing `--no-single-branch`), caught by the same test run | the fix is what got the test suite to 146/146 green | pending |
+| `4bcd6e7` | `test: cover safe command execution, workspaces, reproduction, and implementation workflow` — 33 new tests (11 command-execution, 6 workspace, 5 reproduction, 5 validation, 4 CLI-level contribution-workflow integration) plus a shared `local_git_repo` fixture so git-dependent tests never hit real network | `pytest`: **146 passed total**, zero real network calls | pending |
+
+**Coverage at end of Phase 5:** 146 tests passing. `execution/command.py` 98%,
+`llm/budget.py`/`llm/router.py` 100%, `workflows/reproduction.py` 94%,
+`execution/workspace.py` 92%, `workflows/implementation.py` 85%,
+`reports/contribution_report.py` 83%. `reports/issue_report.py` and
+`reports/project_report.py` remain manually-verified only (same gap noted
+since Phase 2/3) — the highest-value follow-up for test coverage at this
+point.

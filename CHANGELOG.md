@@ -5,6 +5,22 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.5.0] - Safe reproduction and implementation workflows
+
+### Added
+
+- Safe, typed command execution: every command is an argument array (never `shell=True`) with a declared working directory, timeout, and risk classification. A fixed blocklist rejects `sudo`/`doas`/`su`, SSH-key/AWS-credential path reads, `--privileged`, `git push --force`, `git reset --hard`, and unscoped recursive deletion, regardless of the declared risk level. Output is redacted before being stored.
+- Isolated per-contribution workspaces: clone, checkout, and cleanup, refusing to delete anything outside the workspace root even under a maliciously-crafted contribution ID.
+- Issue reproduction: clones the repository, runs a test command sourced from extracted contribution rules, and reports an evidenced `CONFIRMED` / `NOT_REPRODUCED` / `NEEDS_CLARIFICATION` / `ENVIRONMENT_BLOCKED` status — never `CONFIRMED` without a command that actually failed.
+- Implementation planning via the reasoning-role LLM, grounded in a deterministic context bundle, producing a structured `ImplementationPlan`. OpenSourceScout does not write code to disk automatically — plans are surfaced for human review.
+- Validation: runs the repository's own test/lint/format/typecheck commands and reports an honest per-command status (`PASSED`/`FAILED`/`TIMED_OUT`/`UNAVAILABLE`).
+- `oss issue reproduce`, `oss contribution plan/implement/validate/status`, each recording a `workflows.state_machine` transition.
+
+### Fixed
+
+- `OSS_WORKSPACE_DIR`'s default was frozen to the real home directory at class-definition time, so overriding `OSS_DATA_DIR` alone didn't relocate it as expected — `workspace_dir` is now a property derived from `data_dir` unless explicitly overridden.
+- Shallow `git clone --depth 50` only fetched the default branch, so checking out any other branch/ref failed; added `--no-single-branch`.
+
 ## [0.4.0] - LLM reasoning and context construction
 
 ### Added

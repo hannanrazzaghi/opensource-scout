@@ -20,6 +20,7 @@ src/opensource_scout/
 ├── llm/                # OpenAI Responses API client, model router,
 │                       # cost/token budgets, context builder (Phase 4)
 ├── execution/           # safe command runner, workspace manager (Phase 5)
+│                       # workflows/reproduction.py, workflows/implementation.py
 ├── approvals/           # approval issuance/validation (Phase 6)
 ├── claude_bridge/        # export/import for the Claude Pro review loop (Phase 6)
 └── reports/             # Rich/Jinja2 rendering of scores and reports
@@ -86,16 +87,60 @@ range, applies explicit penalties (archived, unlicensed, stale, GPU-only,
 tutorial/promotional repos), and sums to a 0–100 total. `domain.models.
 ScoreDimension` enforces the range invariant at construction time, so a
 malformed or evidence-free score can't silently enter a ranking. LLM-produced
-subjective assessments (when Phase 4 lands) are optional inputs into this
-same validated shape, not a replacement for it — a bad LLM output is rejected
-by the model, not trusted.
+subjective assessments (`domain.llm_models.ProjectAssessment` /
+`IssueAssessment`, Phase 4) are optional inputs into this same validated
+shape, not a replacement for it — a bad LLM output is rejected by the model,
+not trusted. No CLI command wires an assessment call into scoring yet; the
+models and range validation exist and are tested, but `oss discover
+projects`/`issues` remain fully deterministic today.
 
-## LLM routing (not yet built — Phase 4)
+## LLM routing (Phase 4)
 
 Three logical roles — fast / reasoning / coding — map to configured model
 names (`OPENAI_MODEL_FAST/_REASONING/_CODING`); the same model may serve
 multiple roles, and a role never silently escalates to a more expensive model
-when its configured one is unavailable.
+when its configured one is unavailable (`llm.router.ModelUnavailableError`).
+`llm.client.OpenAiClient` wraps `AsyncOpenAI.responses.parse`, requiring a
+Pydantic `response_model` for every call — there is no unstructured "just ask
+the model" path. Malformed output (including the raw `pydantic.ValidationError`
+the SDK raises when the model's text doesn't match the schema) is retried
+once, then raised. Every call is recorded in `llm_calls` (cost/token metadata
+only, never raw prompt/response content) and checked against daily/monthly
+budgets and a per-workflow call-count limit *before* it's made. Identical
+`(model, task_category, prompt)` requests are served from `llm_cache` instead
+of being re-billed.
+
+## Deterministic context construction (Phase 4)
+
+`llm.context.build_context_bundle` ranks candidate files by lexical overlap
+with a set of query terms and selects a bounded, token-budgeted subset — an
+LLM is never handed an unfiltered repository dump. Files with zero overlap
+are excluded even when token budget remains.
+
+## Safe execution and reproduction (Phase 5)
+
+`execution.command.run_command` executes every command as a declared
+`CommandSpec` — executable, argument array, working directory, timeout, risk
+classification — and never via a shell string. A fixed blocklist
+(`sudo`/`doas`/`su`, SSH-key/AWS-credential paths, `--privileged`, `git push
+--force`, `git reset --hard`, unscoped recursive deletion) is enforced
+regardless of the command's declared risk level; a scoped `rm -rf` inside the
+command's own working directory is the one case recursive deletion is
+allowed. `execution.workspace` clones a repository into an isolated,
+per-contribution directory (refusing to delete anything outside the
+workspace root even under a crafted contribution ID).
+
+`workflows.reproduction.reproduce_issue` runs a test command against a fresh
+clone and classifies the result as `CONFIRMED` (non-zero exit — evidence of
+the failure), `NOT_REPRODUCED` (zero exit — doesn't mean the issue is
+invalid, only that this command didn't show it), `NEEDS_CLARIFICATION` (no
+test command available), or `ENVIRONMENT_BLOCKED` (clone/checkout failed or
+the command timed out). `workflows.implementation.plan_implementation` calls
+the reasoning-role LLM over a context bundle to produce a structured
+`ImplementationPlan`; `validate_contribution` runs the repository's own
+test/lint/format/typecheck commands and reports `PASSED`/`FAILED`/
+`TIMED_OUT`/`UNAVAILABLE` per command. Neither function writes code to disk —
+a plan is for human review, not automatic application.
 
 ## Claude Pro bridge (not yet built — Phase 6)
 

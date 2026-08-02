@@ -208,17 +208,21 @@ def issue_group(
     number: int,
 ) -> None:
     """`oss issue inspect|select|reproduce <owner/repository> <number>`."""
-    if action == "reproduce":
-        raise _not_implemented("issue reproduce", "Phase 5 (safe reproduction)")
-    if action not in {"inspect", "select"}:
+    if action not in {"inspect", "select", "reproduce"}:
         err_console.print(
             f"[bold red]unknown action:[/bold red] {action!r} (expected inspect|select|reproduce)"
         )
         raise typer.Exit(code=2)
 
+    settings = _load_settings_or_exit()
+    if action == "reproduce":
+        from opensource_scout.reports.contribution_report import run_issue_reproduce
+
+        run_issue_reproduce(settings, repository, number, console=console)
+        return
+
     from opensource_scout.reports.issue_report import run_issue_inspect, run_issue_select
 
-    settings = _load_settings_or_exit()
     if action == "inspect":
         run_issue_inspect(settings, repository, number, console=console)
     else:
@@ -245,22 +249,31 @@ app.add_typer(contribution_app, name="contribution")
 
 @contribution_app.command("plan")
 def contribution_plan(issue_id: str) -> None:
-    raise _not_implemented("contribution plan", "Phase 5 (implementation workflow)")
+    """`oss contribution plan <owner/repository>#<number>`."""
+    from opensource_scout.reports.contribution_report import run_contribution_plan
+
+    run_contribution_plan(_load_settings_or_exit(), issue_id, console=console)
 
 
 @contribution_app.command("implement")
 def contribution_implement(contribution_id: str) -> None:
-    raise _not_implemented("contribution implement", "Phase 5 (implementation workflow)")
+    from opensource_scout.reports.contribution_report import run_contribution_implement
+
+    run_contribution_implement(_load_settings_or_exit(), contribution_id, console=console)
 
 
 @contribution_app.command("validate")
 def contribution_validate(contribution_id: str) -> None:
-    raise _not_implemented("contribution validate", "Phase 5 (implementation workflow)")
+    from opensource_scout.reports.contribution_report import run_contribution_validate
+
+    run_contribution_validate(_load_settings_or_exit(), contribution_id, console=console)
 
 
 @contribution_app.command("status")
 def contribution_status(contribution_id: str) -> None:
-    raise _not_implemented("contribution status", "Phase 5 (implementation workflow)")
+    from opensource_scout.reports.contribution_report import run_contribution_status
+
+    run_contribution_status(_load_settings_or_exit(), contribution_id, console=console)
 
 
 # --- Claude review bridge ---
