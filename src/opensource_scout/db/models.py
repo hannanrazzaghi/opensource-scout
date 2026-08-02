@@ -142,6 +142,24 @@ class LlmCallRow(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class LlmCacheRow(Base):
+    """Cache of structured LLM outputs, keyed by a hash of (model, prompt).
+
+    Distinct from :class:`LlmCallRow`: that table records call *metadata*
+    for cost auditing and intentionally never stores raw content, while this
+    table stores the *derived, structured* result (already-validated JSON
+    matching one of the ``domain.llm_models`` shapes) so an identical
+    request can be served from cache instead of re-billed."""
+
+    __tablename__ = "llm_cache"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cache_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    model: Mapped[str] = mapped_column(String(128))
+    response_json: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class CommandRunRow(Base):
     """One recorded safe-command execution (see
     :mod:`opensource_scout.execution`). ``stdout``/``stderr`` are stored
