@@ -5,6 +5,21 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [1.0.0] - Stable end-to-end contribution workflow
+
+### Added
+
+- Approval issuance, granting, and consumption: `oss github push`/`oss github open-pr` never act without a valid, unexpired, single-use `Approval` of the matching kind — the row only comes into existence once a human runs `oss approve <approval-id>`, not when the system requests it.
+- The Claude Pro review bridge: `oss claude export <architecture|issue|plan|diff|pr> <id>` renders a Markdown packet (repository rules, issue/plan context, test evidence, requested response format); `oss claude import <file>` parses a pasted-back response into structured, explicitly untrusted feedback — never executed.
+- PR preparation (`oss pr prepare`) generating branch name, commit message, PR title/body (what was wrong / why it mattered / how it was fixed / how it was tested / what was intentionally not changed), and a compliance checklist.
+- Approval-gated GitHub mutation commands: `oss github push` (real `git push` via the safe command runner) and `oss github open-pr` (GitHub REST `POST /pulls`), both supporting `--dry-run`.
+- The contribution ledger (`oss ledger list/show/sync`) and résumé generation (`oss resume generate`) — a résumé bullet is only ever generated for a contribution already in `MERGED`/`RELEASED`.
+
+### Fixed
+
+- `workflows.state_machine.transition()` defaulted to a naive `datetime.now()` when no explicit timestamp was passed, which crashed when compared against a timezone-aware `Approval` — found by an end-to-end smoke test of the approval-gated push/open-PR flow, not by manual review. Fixed to default to UTC.
+- `approvals.service` reads `ApprovalRow` timestamps back from SQLite as naive datetimes despite the column being declared `DateTime(timezone=True)` — SQLite doesn't reliably round-trip timezone info through SQLAlchemy. Fixed by treating naive reads as UTC at the persistence boundary.
+
 ## [0.5.0] - Safe reproduction and implementation workflows
 
 ### Added

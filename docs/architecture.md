@@ -142,10 +142,52 @@ test/lint/format/typecheck commands and reports `PASSED`/`FAILED`/
 `TIMED_OUT`/`UNAVAILABLE` per command. Neither function writes code to disk —
 a plan is for human review, not automatic application.
 
-## Claude Pro bridge (not yet built — Phase 6)
+## Approval system (Phase 6)
+
+`approvals.service` is the single mechanism through which
+`workflows.state_machine`'s `BRANCH_PUSHED`/`PR_OPENED` gates can ever be
+satisfied. Requesting an approval (`request_approval`, called from `oss pr
+prepare` and the first `oss github open-pr` invocation) only appends a
+*pending* entry to the contribution's `extra_json` — no `approvals` table row
+exists yet, so nothing can treat it as authorized. Only `oss approve
+<approval-id>` (`grant_approval`) creates the real, time-boxed row. Consuming
+it (`consume_approval`, called only after a push/PR actually succeeds) sets
+`used_at`, making it permanently invalid for reuse — single-use is enforced
+by that field being checked in `Approval.is_valid()`, not by deleting the
+row (rows are kept as an audit trail).
+
+## Claude Pro bridge (Phase 6)
 
 `oss claude export` renders a Markdown review packet from repository rules,
 issue/plan/diff context, and test evidence. Claude's pasted-back response is
 parsed by `oss claude import` into structured feedback, treated as untrusted
 input, checked against repository evidence, and surfaced to the user — never
-executed automatically.
+executed automatically. The parser (`claude_bridge.import_`) only requires a
+recognizable `DECISION: APPROVE|REVISE|REJECT` line; every other section is
+best-effort, so a response that deviates from the requested format still
+degrades gracefully instead of failing outright.
+
+## PR preparation and GitHub mutation (Phase 6)
+
+`reports.pr_report` generates branch name, commit message, PR title/body,
+and a compliance checklist, then requests a `PUSH_EXTERNAL_BRANCH` approval
+and transitions to `AWAITING_PUSH_APPROVAL`. `oss github push` re-checks for
+a *currently valid* approval (not just "one was requested") before running a
+real `git push` through the safe command runner, and only consumes the
+approval and advances state on a successful push. `oss github open-pr`
+mirrors the same two-call pattern for `OPEN_EXTERNAL_PULL_REQUEST` — the
+first call (from `BRANCH_PUSHED`) only requests approval; the second (from
+`AWAITING_PR_APPROVAL`, after `oss approve`) creates the PR via
+`GitHubRestClient.post_json` and transitions to `PR_OPENED`. Both commands
+support `--dry-run`, which short-circuits before touching the approval or
+the network.
+
+## Contribution ledger (Phase 6)
+
+`oss ledger sync` is the only ledger command that talks to GitHub — a
+read-only check of whether an open PR has been merged, used to advance
+`PR_OPENED → REVIEW_IN_PROGRESS → MERGED`. `oss resume generate` refuses to
+produce a résumé bullet for any contribution not already in
+`MERGED`/`RELEASED`, and derives "skills demonstrated" from keyword overlap
+between the stored implementation plan and the developer profile — never
+fabricated.
